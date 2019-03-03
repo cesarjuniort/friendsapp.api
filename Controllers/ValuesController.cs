@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using FriendsApp.API.Data;
+using FriendsApp.API.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FriendsApp.API.Controllers
 {
@@ -10,36 +13,66 @@ namespace FriendsApp.API.Controllers
     [ApiController]
     public class ValuesController : ControllerBase
     {
+        private readonly DataContext context;
+
+        public ValuesController(DataContext context)
+        {
+            this.context = context;
+        }
         // GET api/values
         [HttpGet]
-        public ActionResult<IEnumerable<string>> Get()
+        public async Task<IActionResult> GetValues()
         {
-            return new string[] { "value1", "value2" };
+            Console.WriteLine("in GetValues");
+            var values = await context.AppValues.ToListAsync();
+            return Ok(values);
         }
 
         // GET api/values/5
         [HttpGet("{id}")]
-        public ActionResult<string> Get(int id)
+        public async Task<IActionResult> GetValue(string id)
         {
-            return "value";
+            var value = await context.AppValues.FirstOrDefaultAsync(x => x.Id == id);
+            return Ok(value);
         }
 
         // POST api/values
         [HttpPost]
-        public void Post([FromBody] string value)
+        public async Task<IActionResult> Post([FromBody] AppValue value)
         {
+            context.AppValues.Add(value);
+            await context.SaveChangesAsync();
+            return Ok(value);
         }
 
         // PUT api/values/5
         [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        public async Task<IActionResult> Put(string id, [FromBody]  AppValue value)
         {
+            var found = await context.AppValues.FirstOrDefaultAsync(x => x.Id == id);
+            if (found == null)
+            {
+                return BadRequest("The specified Id doesn't exists. Use http post to create a new entry");
+            }
+            else
+            {
+                found.Value = value.Value;
+                await context.SaveChangesAsync();
+                return Ok(value);
+            }
         }
 
         // DELETE api/values/5
         [HttpDelete("{id}")]
-        public void Delete(int id)
+        public async Task<IActionResult> Delete(string id)
         {
+            var found = await context.AppValues.FirstOrDefaultAsync(x => x.Id == id);
+            if (found != null)
+            {
+                context.Entry(found).State = EntityState.Deleted;
+                await context.SaveChangesAsync();
+            }
+            return Ok();
         }
     }
 }
